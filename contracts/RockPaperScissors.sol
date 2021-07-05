@@ -311,7 +311,9 @@ contract RockPaperScissors is ERC20, Ownable {
     function cancelGame(bytes32 gameId) public {
         Game storage game = games[gameId];
         address player = game.player;
-        require(player != address(0), "Game does not exist.");
+
+        require(player != address(0), "This game does not exist.");
+        require(player == msg.sender, "Player is not player for this game; not permitted to cancel the game.");
         require(game.opponentMove == Shape.NONE, "Unable to cancel; the opponent is already participating in this game.");
         require(game.deadline < block.timestamp, "Deadline for join has not yet expired.");
 
@@ -361,6 +363,7 @@ contract RockPaperScissors is ERC20, Ownable {
      */
     function claimTotalWagered(bytes32 gameId) public {
         Game storage game = games[gameId];
+        
         require(game.player != address(0), "This game does not exist");
         require(game.opponentMove != Shape.NONE, "Opponent has not yet joined the game.");
         require(game.deadline < block.timestamp, "The deadline for reveal for this game has not yet expired.");
@@ -377,7 +380,7 @@ contract RockPaperScissors is ERC20, Ownable {
     }
 
     /**
-     * @dev Clears game if it was cancelled by the player
+     * @dev Clears game if it was cancelled by the player. Leaves player field so that game is not reused and player who cancelled is known.
      * @param gameId ID of the game
      */    
     function _clearGame(bytes32 gameId) internal {
