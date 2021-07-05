@@ -284,18 +284,30 @@ contract RockPaperScissors is ERC20, Ownable {
 
         address opponent = game.opponent;
 
+        players[player].totalGames++;
+        players[opponent].totalGames++;
+
         Payoff payoff = Payoff((3 + uint256(move) - uint256(opponentMove)) % 3);
         game.payoff = payoff;
 
         if (payoff == Payoff.TIE) {
             transfer(player, playerWager);
             transfer(opponent, opponentWager);
+            players[player].ties++;
+            players[opponent].ties++;
+
         }
         else if (payoff == Payoff.PLAYER) {
             transfer(player, totalWagered);
+            players[player].wins++;
+            players[player].winnings += totalWagered;
+            players[opponent].losses++;
         }
         else if (payoff == Payoff.OPPONENT) {
             transfer(opponent, totalWagered);
+            players[opponent].wins++;
+            players[opponent].winnings += totalWagered;
+            players[player].losses++;
         }
         else {
             assert(false);
