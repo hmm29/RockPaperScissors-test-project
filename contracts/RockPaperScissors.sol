@@ -44,16 +44,16 @@ abstract contract RockPaperScissors is ERC20, Ownable {
     mapping(address => Player) public players;
 
     uint256 public feeInTokens;
-    uint256 private revealTimerDuration;
+    uint256 public timeUntilReveal;
 
     uint256 private MIN_REVEAL_TIMER_DURATION = 1800; // 30 minutes in seconds
     uint256 private MAX_REVEAL_TIMER_DURATION = 3600; // 1 hour in seconds
     uint256 private MIN_TIME_LEFT_TO_JOIN = 3600; // 1 hour in seconds
     uint256 private MAX_TIME_LEFT_TO_JOIN = 432000; // 5 days in seconds
 
-    event RevealTimerDurationUpdated(
+    event TimeUntilRevealUpdated(
         address indexed sender,
-        uint256 revealTimerDuration
+        uint256 timeUntilReveal
     );
     event GameCreated(
         address indexed player,
@@ -135,21 +135,17 @@ abstract contract RockPaperScissors is ERC20, Ownable {
         feeInTokens = _feeInTokens;
     }
 
-    function setRevealTimerDuration(uint256 _revealTimerDuration)
-        public
-        onlyOwner
-    {
+    /**
+     * @dev Update how much time left until players' moves are revealed in the * game. This builds anticipation for the payoff throughout the game.
+     */
+    function setTimeUntilReveal(uint256 _timeUntilReveal) public onlyOwner {
         require(
-            MIN_REVEAL_TIMER_DURATION <= _revealTimerDuration &&
-                _revealTimerDuration <= MAX_REVEAL_TIMER_DURATION,
+            MIN_REVEAL_TIMER_DURATION <= _timeUntilReveal &&
+                _timeUntilReveal <= MAX_REVEAL_TIMER_DURATION,
             "Please ensure the reveal timer duration is between the acceptable min and max values."
         );
-        revealTimerDuration = _revealTimerDuration;
-        emit RevealTimerDurationUpdated(msg.sender, _revealTimerDuration);
-    }
-
-    function getRevealTimerDuration() public view returns (uint256) {
-        return revealTimerDuration;
+        timeUntilReveal = _timeUntilReveal;
+        emit TimeUntilRevealUpdated(msg.sender, _timeUntilReveal);
     }
 
     /**
