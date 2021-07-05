@@ -28,7 +28,7 @@ abstract contract RockPaperScissors is ERC20, Ownable {
         address player;
         address opponent;
         Shape opponentMove;
-        uint256 stake;
+        uint256 totalWagered;
         uint256 deadline;
     }
 
@@ -45,10 +45,13 @@ abstract contract RockPaperScissors is ERC20, Ownable {
 
     uint256 public feeInTokens;
     uint256 private revealTimerDuration;
+
     uint256 private MIN_REVEAL_TIMER_DURATION = 1800; // 30 minutes in seconds
     uint256 private MAX_REVEAL_TIMER_DURATION = 3600; // 1 hour in seconds
+    uint256 private MIN_TIME_LEFT_TO_JOIN = 3600; // 1 hour in seconds
+    uint256 private MAX_TIME_LEFT_TO_JOIN = 432000; // 5 days in seconds
 
-    event RevealTimerDurationUpdate(
+    event RevealTimerDurationUpdated(
         address indexed sender,
         uint256 revealTimerDuration
     );
@@ -56,7 +59,7 @@ abstract contract RockPaperScissors is ERC20, Ownable {
         address indexed player,
         address indexed opponent,
         bytes32 indexed gameId,
-        uint256 wager,
+        uint256 playerWager,
         uint256 deadlineToJoin
     );
     event GameJoined(
@@ -130,5 +133,91 @@ abstract contract RockPaperScissors is ERC20, Ownable {
             _feeInTokens
         );
         feeInTokens = _feeInTokens;
+    }
+
+    function setRevealTimerDuration(uint256 _revealTimerDuration)
+        public
+        onlyOwner
+    {
+        require(
+            MIN_REVEAL_TIMER_DURATION <= _revealTimerDuration &&
+                _revealTimerDuration <= MAX_REVEAL_TIMER_DURATION,
+            "Please ensure the reveal timer duration is between the acceptable min and max values."
+        );
+        revealTimerDuration = _revealTimerDuration;
+        emit RevealTimerDurationUpdated(msg.sender, _revealTimerDuration);
+    }
+
+    function getRevealTimerDuration() public view returns (uint256) {
+        return revealTimerDuration;
+    }
+
+    /**
+     * @dev Players can access each game via a unique key, which is a hash derived from the inputs that the game creator provided.
+     * @param sender The player who is creating the game
+     * @param move The player's selected move
+     * @param secret A secret added to generate the unique hash
+     * @return hashedMove A hash derived from the player's move, used as the game ID.
+     */
+    function generateGameId(
+        address sender,
+        Shape move,
+        bytes32 secret
+    ) public view returns (bytes32 hashedMove) {
+        require(sender != address(0), "Invalid sender address.");
+        require(move != Shape.NONE, "NONE is not an allowed move.");
+        hashedMove = keccak256(abi.encodePacked(this, sender, move, secret));
+    }
+
+    /**
+     * @dev The player creates a game by submitting his hashed move, i.e., the * gameId. Allows player to set 'exploding' games that opponent has limited * time to join.
+     * @param gameId The unique ID for the game
+     * @param opponent The address of the selected opponent for the game
+     * @param timeLeftToJoin Amount of time opponent has left to join the game
+     * @param wager Amount of tokens bet by the player
+     * @param useWinnings A flag that lets player override wager amount and use previous winnings
+     */
+    function createGame(
+        bytes32 gameId,
+        address opponent,
+        uint256 timeLeftToJoin,
+        uint256 wager,
+        bool useWinnings
+    ) public {
+        require(opponent != address(0), "Not a valid opponent address.");
+        require(
+            opponent != msg.sender,
+            "Not a valid opponent; cannot play against oneself."
+        );
+        require(
+            MIN_TIME_LEFT_TO_JOIN <= timeLeftToJoin &&
+                timeLeftToJoin <= MAX_TIME_LEFT_TO_JOIN,
+            "Please ensure the time left to join the game is between the acceptable min and max values."
+        );
+
+        if (balanceOf(msg.sender) >= players[msg.sender].winnings) {
+            if (useWinnings) {
+                wager = players[msg.sender].winnings;
+            }
+        } else {
+            require(
+                wager <= balanceOf(msg.sender),
+                "You don't have enough tokens for this wager amount."
+            );
+        }
+
+        Game storage game = games[gameId];
+        require(game.player == address(0), "This game already exists.");
+
+        game.player = msg.sender;
+        game.opponent = opponent;
+        game.totalWagered = wager;
+
+        // TODO: transfer wager to smart contract address
+
+        uint256 deadlineToJoin = block.timestamp + timeLeftToJoin;
+        game.deadline = deadlineToJoin;
+
+        emit GameCreated(msg.sender, opponent, gameId, wager, deadlineToJoin);
     }
 }

@@ -71,7 +71,7 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "wager",
+          "name": "playerWager",
           "type": "uint256"
         },
         {
@@ -194,7 +194,7 @@
           "type": "uint256"
         }
       ],
-      "name": "RevealTimerDurationUpdate",
+      "name": "RevealTimerDurationUpdated",
       "type": "event"
     },
     {
@@ -309,6 +309,39 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "gameId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "opponent",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timeLeftToJoin",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "wager",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "useWinnings",
+          "type": "bool"
+        }
+      ],
+      "name": "createGame",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "decimals",
       "outputs": [
@@ -385,12 +418,54 @@
         },
         {
           "internalType": "uint256",
-          "name": "stake",
+          "name": "totalWagered",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
           "name": "deadline",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "internalType": "enum RockPaperScissors.Shape",
+          "name": "move",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "secret",
+          "type": "bytes32"
+        }
+      ],
+      "name": "generateGameId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hashedMove",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getRevealTimerDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -502,6 +577,19 @@
         }
       ],
       "name": "setFeeInTokens",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_revealTimerDuration",
+          "type": "uint256"
+        }
+      ],
+      "name": "setRevealTimerDuration",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
