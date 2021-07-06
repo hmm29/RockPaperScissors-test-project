@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/harrisonmiller/Downloads/rps-test/contracts/RockPaperScissors.sol": {
-      "lastModificationDate": 1625595347275,
-      "contentHash": "37dd58611a92a8c7dd1bb78c5b56fb66",
+      "lastModificationDate": 1625596198321,
+      "contentHash": "94771762c434e278a066a7bac68dc560",
       "sourceName": "contracts/RockPaperScissors.sol",
       "solcConfig": {
         "version": "0.8.4",
