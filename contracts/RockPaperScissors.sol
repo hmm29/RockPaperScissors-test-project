@@ -107,6 +107,7 @@ contract RockPaperScissors is ERC20, Ownable {
         );
         _mint(msg.sender, 1_000_000_000 * (10**decimals()));
         _setFeeInTokens(_feeInTokens);
+        _setSecondsUntilReveal(60);
     }
 
     /**
@@ -127,15 +128,10 @@ contract RockPaperScissors is ERC20, Ownable {
 
     /**
      * @dev Update how much time left until players' moves are revealed in the * game. This builds anticipation for the payoff throughout the game.
+     * @param _secondsUntilReveal Seconds left until revealing player's move
      */
-    function setSecondsUntilReveal(uint256 _secondsUntilReveal) public onlyOwner {
-        require(
-            MIN_SECONDS_UNTIL_REVEAL <= _secondsUntilReveal &&
-                _secondsUntilReveal <= MAX_SECONDS_UNTIL_REVEAL,
-            "Please ensure the reveal timer duration is between the acceptable min (60) and max (3600) values."
-        );
-        secondsUntilReveal = _secondsUntilReveal;
-        emit SecondsUntilRevealUpdated(msg.sender, _secondsUntilReveal);
+    function setSecondsUntilReveal(uint256 _secondsUntilReveal) external onlyOwner {
+        _setSecondsUntilReveal(_secondsUntilReveal);
     }
 
     /**
@@ -259,10 +255,13 @@ contract RockPaperScissors is ERC20, Ownable {
 
         Game storage game = games[gameId];
         address player = game.player;
-        require(player != address(0), "This game does not exist");
+        require(player != address(0), "Player move or secret argument incorrect: game does not exist.");
 
         Shape opponentMove = game.opponentMove;
         require(opponentMove != Shape.NONE, "The opponent has not yet joined the game.");
+
+        console.log("Block timestamp is %d", block.timestamp);
+        console.log("Game deadline is %d", game.deadline);
 
         require(block.timestamp <= game.deadline, "The deadline for the reveal has expired. The opponent may or may not claim the total amount wagered.");
 
@@ -272,24 +271,24 @@ contract RockPaperScissors is ERC20, Ownable {
 
         address opponent = game.opponent;
 
-        Payoff payoff = Payoff((4 + uint256(move) - uint256(opponentMove)) % 3);
+        Payoff payoff = Payoff(((3 + uint256(move) - uint256(opponentMove)) % 3)+1);
         game.payoff = payoff;
 
         if (payoff == Payoff.TIE) {
-            transfer(player, playerWager);
-            transfer(opponent, opponentWager);
+            _payTo(player, playerWager);
+            _payTo(opponent, opponentWager);
             players[player].ties++;
             players[opponent].ties++;
 
         }
         else if (payoff == Payoff.PLAYER) {
-            transfer(player, totalWagered);
+            _payTo(player, totalWagered);
             players[player].wins++;
             players[player].winnings += totalWagered;
             players[opponent].losses++;
         }
         else if (payoff == Payoff.OPPONENT) {
-            transfer(opponent, totalWagered);
+            _payTo(opponent, totalWagered);
             players[opponent].wins++;
             players[opponent].winnings += totalWagered;
             players[player].losses++;
@@ -302,6 +301,10 @@ contract RockPaperScissors is ERC20, Ownable {
         players[opponent].totalGames++;
 
         emit MoveRevealed(msg.sender, gameId, move, payoff);
+    }
+
+    function _payTo(address recipient, uint256 amount) internal {
+         ERC20(address(this)).transfer(recipient, amount);
     }
 
     /**
@@ -375,20 +378,18 @@ contract RockPaperScissors is ERC20, Ownable {
         uint256 wager,
         bool useWinnings
     ) internal view returns (uint256 finalWager) {
-        finalWager = wager;
-
-        if (
-            players[player].winnings > 0 &&
-            balanceOf(player) >= players[player].winnings
-        ) {
-            if (useWinnings) {
-                finalWager = players[player].winnings;
-            }
-        } else {
-            require(
+        require(
                 wager <= balanceOf(player),
                 "Player doesn't have enough tokens for this wagered amount."
             );
+
+        finalWager = wager;
+
+        if (useWinnings) {
+            if(players[player].winnings > 0 &&
+            balanceOf(player) >= players[player].winnings) {
+                finalWager = players[player].winnings;
+            }
         }
     }
 
@@ -404,6 +405,20 @@ contract RockPaperScissors is ERC20, Ownable {
             _feeInTokens
         );
         feeInTokens = _feeInTokens;
+    }
+
+    /**
+     * @dev Internal function to update secondsUntilReveal.
+     * @param _secondsUntilReveal Seconds left until revealing player's move
+     */
+    function _setSecondsUntilReveal(uint256 _secondsUntilReveal) internal {
+        require(
+            MIN_SECONDS_UNTIL_REVEAL <= _secondsUntilReveal &&
+                _secondsUntilReveal <= MAX_SECONDS_UNTIL_REVEAL,
+            "Please ensure the reveal timer duration is between the acceptable min (60) and max (3600) values."
+        );
+        secondsUntilReveal = _secondsUntilReveal;
+        emit SecondsUntilRevealUpdated(msg.sender, _secondsUntilReveal);
     }
 
     /**
