@@ -19,9 +19,11 @@ contract RockPaperScissors is ERC20, Ownable {
         SCISSORS
     }
     enum Payoff {
+        NONE,
         TIE,
         PLAYER,
-        OPPONENT
+        OPPONENT,
+        CLAIMED
     }
 
     struct Game {
@@ -98,7 +100,7 @@ contract RockPaperScissors is ERC20, Ownable {
         uint256 _feeInTokens
     ) ERC20(_name, _symbol) {
         console.log(
-            "Deploying a RockPaperScissors contract with name %s, symbol %s, _feeInTokens %u",
+            "Deploying a RockPaperScissors contract with name %s, symbol %s, _feeInTokens %d",
             _name,
             _symbol,
             _feeInTokens
@@ -108,7 +110,7 @@ contract RockPaperScissors is ERC20, Ownable {
     }
 
     /**
-     * @dev Override decimals() function of ERC20 parent contract so that tokens have single denomination and are indivisible.
+     * @dev Overrides decimals() function of ERC20 parent contract so that tokens have single denomination and are indivisible.
      * @return constant value of 0
      */
     function decimals() public pure override returns (uint8) {
@@ -121,20 +123,6 @@ contract RockPaperScissors is ERC20, Ownable {
      */
     function setFeeInTokens(uint256 _feeInTokens) external onlyOwner {
         _setFeeInTokens(_feeInTokens);
-    }
-
-    /**
-     * @dev Internal function to update feeInTokens.
-     * @param _feeInTokens The fee in tokens a player needs to deposit to enroll
-     */
-    function _setFeeInTokens(uint256 _feeInTokens) internal {
-        require(_feeInTokens >= 0, "Token fee cannot be less than 0.");
-        console.log(
-            "Changing feeInTokens from '%u' to '%u'",
-            feeInTokens,
-            _feeInTokens
-        );
-        feeInTokens = _feeInTokens;
     }
 
     /**
@@ -284,10 +272,7 @@ contract RockPaperScissors is ERC20, Ownable {
 
         address opponent = game.opponent;
 
-        players[player].totalGames++;
-        players[opponent].totalGames++;
-
-        Payoff payoff = Payoff((3 + uint256(move) - uint256(opponentMove)) % 3);
+        Payoff payoff = Payoff((4 + uint256(move) - uint256(opponentMove)) % 3);
         game.payoff = payoff;
 
         if (payoff == Payoff.TIE) {
@@ -313,6 +298,9 @@ contract RockPaperScissors is ERC20, Ownable {
             assert(false);
         }
 
+        players[player].totalGames++;
+        players[opponent].totalGames++;
+
         emit MoveRevealed(msg.sender, gameId, move, payoff);
     }
 
@@ -337,6 +325,41 @@ contract RockPaperScissors is ERC20, Ownable {
         }
 
         emit GameCancelled(msg.sender, gameId);
+    }
+
+    /**
+     * @dev In cases where the player doesn't reveal his move, the opponent can claim the total amount wagered. The player is penalized for being uncooperative. These are not counted as winnings since the game didn't complete.
+     * @param gameId ID of the game
+     */
+    function claimTotalWagered(bytes32 gameId) public {
+        Game storage game = games[gameId];
+        
+        require(game.player != address(0), "This game does not exist");
+        require(game.opponentMove != Shape.NONE, "Opponent has not yet joined the game.");
+        require(game.deadline < block.timestamp, "The deadline for reveal for this game has not yet expired.");
+
+        uint256 totalWagered = game.playerWager + game.opponentWager;
+        address opponent = game.opponent;
+        game.payoff = Payoff.CLAIMED;
+
+        if (totalWagered > 0) {
+            transfer(opponent, totalWagered);
+        }
+
+        emit TotalWageredClaimed(msg.sender, gameId);
+    }
+
+    /**
+     * @dev Clears game if it was cancelled by the player. Leaves player field so that game is not reused and player who cancelled is known. Leaves default value for payoff (0) since game was never finished.
+     * @param gameId ID of the game
+     */    
+    function _clearGame(bytes32 gameId) internal {
+        Game storage game = games[gameId];
+        game.opponent = address(0);
+        game.opponentMove = Shape.NONE;
+        game.playerWager = 0;
+        game.opponentWager = 0;
+        game.deadline = 0;
     }
 
     /**
@@ -370,38 +393,17 @@ contract RockPaperScissors is ERC20, Ownable {
     }
 
     /**
-     * @dev In cases where the player doesn't reveal his move, the opponent can claim the total amount wagered. The player is penalized for being uncooperative.
-     * @param gameId ID of the game
+     * @dev Internal function to update feeInTokens.
+     * @param _feeInTokens The fee in tokens a player needs to deposit to enroll
      */
-    function claimTotalWagered(bytes32 gameId) public {
-        Game storage game = games[gameId];
-        
-        require(game.player != address(0), "This game does not exist");
-        require(game.opponentMove != Shape.NONE, "Opponent has not yet joined the game.");
-        require(game.deadline < block.timestamp, "The deadline for reveal for this game has not yet expired.");
-
-        uint256 totalWagered = game.playerWager + game.opponentWager;
-        address opponent = game.opponent;
-        _clearGame(gameId);
-
-        if (totalWagered > 0) {
-            transfer(opponent, totalWagered);
-        }
-
-        emit TotalWageredClaimed(msg.sender, gameId);
-    }
-
-    /**
-     * @dev Clears game if it was cancelled by the player. Leaves player field so that game is not reused and player who cancelled is known.
-     * @param gameId ID of the game
-     */    
-    function _clearGame(bytes32 gameId) internal {
-        Game storage game = games[gameId];
-        game.opponent = address(0);
-        game.opponentMove = Shape.NONE;
-        game.playerWager = 0;
-        game.opponentWager = 0;
-        game.deadline = 0;
+    function _setFeeInTokens(uint256 _feeInTokens) internal {
+        require(_feeInTokens >= 0, "Token fee cannot be less than 0.");
+        console.log(
+            "Changing feeInTokens from '%d' to '%d'",
+            feeInTokens,
+            _feeInTokens
+        );
+        feeInTokens = _feeInTokens;
     }
 
     /**
