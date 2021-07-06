@@ -145,7 +145,7 @@ contract RockPaperScissors is ERC20, Ownable {
         bytes32 secret
     ) public view returns (bytes32 hashedMove) {
         require(msg.sender != address(0), "Invalid sender address.");
-        require(move != Shape.NONE, "NONE is not an allowed move.");
+        require(move != Shape.NONE, "NONE is not a valid move.");
         hashedMove = keccak256(abi.encodePacked(this, msg.sender, move, secret));
     }
 
@@ -164,8 +164,9 @@ contract RockPaperScissors is ERC20, Ownable {
         uint256 wager,
         bool useWinnings
     ) public {
-        require(balanceOf(msg.sender) >= feeInTokens, "Insufficient token balance to create a new game.");
+        require(balanceOf(msg.sender) >= feeInTokens, "Insufficient token balance to create a game.");
         require(opponent != address(0), "Not a valid opponent address.");
+        require(opponent != msg.sender, "Not a valid opponent; players cannot play against themselves.");
 
         uint256 secondsLeftToJoin = minutesLeftToJoin*60;
         require(
@@ -206,8 +207,8 @@ contract RockPaperScissors is ERC20, Ownable {
         uint256 wager,
         bool useWinnings
     ) public {
-        require(balanceOf(msg.sender) >= feeInTokens, "Insufficient token balance to join a game.");
-        require(move != Shape.NONE, "NONE is not an allowed move.");
+        require(balanceOf(msg.sender) >= feeInTokens, "Insufficient token balance to join the game.");
+        require(move != Shape.NONE, "NONE is not a valid move.");
 
         Game storage game = games[gameId];
         require(
@@ -329,7 +330,7 @@ contract RockPaperScissors is ERC20, Ownable {
         _clearGame(gameId);
 
         if (playerWager > 0) {
-            transfer(player, playerWager);
+            _payTo(player, playerWager);
         }
 
         emit GameCancelled(msg.sender, gameId);
@@ -351,7 +352,7 @@ contract RockPaperScissors is ERC20, Ownable {
         game.payoff = Payoff.CLAIMED;
 
         if (totalWagered > 0) {
-            transfer(opponent, totalWagered);
+            _payTo(opponent, totalWagered);
         }
 
         emit TotalWageredClaimed(msg.sender, gameId);
@@ -420,7 +421,7 @@ contract RockPaperScissors is ERC20, Ownable {
         require(
             MIN_SECONDS_UNTIL_REVEAL <= _secondsUntilReveal &&
                 _secondsUntilReveal <= MAX_SECONDS_UNTIL_REVEAL,
-            "Please ensure the reveal timer duration is between the acceptable min (60) and max (3600) values."
+            "Please ensure secondsUntilReveal is between the acceptable min (60) and max (3600) values."
         );
         secondsUntilReveal = _secondsUntilReveal;
         emit SecondsUntilRevealUpdated(msg.sender, _secondsUntilReveal);

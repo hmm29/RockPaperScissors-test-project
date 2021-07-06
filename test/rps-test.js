@@ -3,358 +3,376 @@ const { ethers } = require("hardhat");
 const bytes32 = require('bytes32');
 
 describe("RockPaperScissors", function () {
-    it("Should return the name, symbol, and feeInTokens to play.", async function () {
+    beforeEach(async function () {
         const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-        const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 5);
+        const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
+        this.currentTest.rps = rps;
         await rps.deployed();
-
-        expect(await rps.name()).to.equal("RockPaperScissors");
-        expect(await rps.symbol()).to.equal("RPS");
-        expect(await rps.feeInTokens()).to.equal(5);
     });
 
-    it("Should allow owner to change fee in tokens.", async function () {
-        const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-        const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 5);
-        await rps.deployed();
-        
-        const setFeeInTokensTx = await rps.setFeeInTokens(81);
+    it("Should return the name, symbol, and feeInTokens.", async function () {
+        expect(await this.test.rps.name()).to.equal("RockPaperScissors");
+        expect(await this.test.rps.symbol()).to.equal("RPS");
+        expect(await this.test.rps.feeInTokens()).to.equal(100);
+    });
+
+    it("Should allow owner to change fee in tokens.", async function () {        
+        const setFeeInTokensTx = await this.test.rps.setFeeInTokens(81);
 
         await setFeeInTokensTx.wait();
 
-        expect(await rps.feeInTokens()).to.equal(81);
+        expect(await this.test.rps.feeInTokens()).to.equal(81);
     });
-});
 
-it("Should allow owner to create a game after contract creation.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
-
-    const generateGameIdTx = await rps.generateGameId(1, bytes32({input: "super secret!"}));
-
-    console.log(`generated game id: ${generateGameIdTx}`);
-
-    const [owner, addr1] = await ethers.getSigners();
-
-    const balance = await rps.balanceOf(owner.address);
-    console.log(`balance: ${balance}`);
-
-    const createGameTx = await rps.createGame(generateGameIdTx, addr1.address, 60, 12, false);
-
-    await createGameTx.wait();
-
-    const [,opponent,,,,,] = await rps.games(generateGameIdTx);
-    expect(opponent).to.equal(addr1.address);
-});
-
-it("Should prevent player from creating game if they have an insufficient balance.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
-
-    const [, addr1, addr2] = await ethers.getSigners();
-
-    try {
-    const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
-
-    console.log(`generated game id: ${generateGameIdTx}`);
-
-    const balance = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`non-owner account balance: ${balance}`);
-
-    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 12, false);
-
-    await createGameTx.wait();
-    } catch(error) {
-        expect(error.message, 'test revert [transaction execution reverts if insufficient balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Insufficient token balance to create a new game.'");
-    }
-});
-
-it("Should prevent player from using a wager that exceeds that player's balance", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
-
-    const [, addr1, addr2] = await ethers.getSigners();
-
-    // transfer from owner to addr1
-    const transferTokenTx = await rps.transfer(addr1.address, 200);
-    await transferTokenTx.wait();
-
-    try {
-        const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+    it("Should allow player with sufficient balance to create a game after contract creation.", async function () {
+        const generateGameIdTx = await this.test.rps.generateGameId(1, bytes32({ input: "super secret!" }));
 
         console.log(`generated game id: ${generateGameIdTx}`);
 
-        const balance = await rps.connect(addr1).balanceOf(addr1.address);
-        console.log(`non-owner account balance: ${balance}`);
+        const [owner, addr1] = await ethers.getSigners();
 
-        const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 400, false);
+        const balance = await this.test.rps.balanceOf(owner.address);
+        console.log(`balance: ${balance}`);
+
+        const createGameTx = await this.test.rps.createGame(generateGameIdTx, addr1.address, 60, 12, false);
 
         await createGameTx.wait();
-    } catch (error) {
-        expect(error.message, 'test revert [wager amount exceeds balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player doesn't have enough tokens for this wagered amount.'");
-    }
-});
 
-it("Should prevent players from cancelling games that are not theirs.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
+        const [, opponent, , , , ,] = await this.test.rps.games(generateGameIdTx);
+        expect(opponent).to.equal(addr1.address);
+    });
 
-    const [, addr1, addr2] = await ethers.getSigners();
+    it("Should prevent player from creating game if they have an insufficient balance.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
 
-    // transfer from owner to addr1
-    const transferTokenTx = await rps.transfer(addr1.address, 200);
-    await transferTokenTx.wait();
+        try {
+            const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-    try {
-        const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+            console.log(`generated game id: ${generateGameIdTx}`);
+
+            const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+            console.log(`account 1 balance: ${balance}`);
+
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 12, false);
+
+            await createGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [transaction execution reverts if insufficient balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Insufficient token balance to create a game.'");
+        }
+    });
+
+    it("Should only allow players to create games with other players.", async function () {
+        const [, addr1] = await ethers.getSigners();
+
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
+
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
 
         console.log(`generated game id: ${generateGameIdTx}`);
 
-        const balance = await rps.connect(addr1).balanceOf(addr1.address);
-        console.log(`non-owner account balance: ${balance}`);
+        try {
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr1.address, 60, 200, true);
 
-        const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
+            await createGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [players cannot play themselves]').to.equal("VM Exception while processing transaction: reverted with reason string 'Not a valid opponent; players cannot play against themselves.'");
+        }
+    });
+
+    it("Should prevent players from setting unreasonable join windows for opponents.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
+
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
+
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
+
+        console.log(`generated game id: ${generateGameIdTx}`);
+
+        try {
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 1, 200, true);
+
+            await createGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [minutes left to join]').to.equal("VM Exception while processing transaction: reverted with reason string 'Please ensure the time left to join the game is between the acceptable min (60 min) and max (7200 min) values.'");
+        }
+    });
+
+    it("Should prevent player from using a wager that exceeds that player's balance.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
+
+        const transferTokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transferTokenTx.wait();
+
+        try {
+            const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+
+            console.log(`generated game id: ${generateGameIdTx}`);
+
+            const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+            console.log(`account 1 balance: ${balance}`);
+
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 400, false);
+
+            await createGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [wager amount exceeds balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player doesn't have enough tokens for this wagered amount.'");
+        }
+    });
+
+    it("Should prevent players from cancelling games that are not theirs.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
+
+        const transferTokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transferTokenTx.wait();
+
+        try {
+            const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+
+            console.log(`generated game id: ${generateGameIdTx}`);
+
+            const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+            console.log(`account 1 balance: ${balance}`);
+
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
+
+            await createGameTx.wait();
+
+            // account 2 attempts to cancel the game with this ID
+            const cancelGameTx = await this.test.rps.connect(addr2).cancelGame(generateGameIdTx);
+
+            await cancelGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [players can only cancel their games]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player is not player for this game; not permitted to cancel the game.'");
+        }
+    });
+
+    it("Should prevent players from cancelling games before the opponent can join.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
+
+        const transferTokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transferTokenTx.wait();
+
+        try {
+            const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+
+            console.log(`generated game id: ${generateGameIdTx}`);
+
+            const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+            console.log(`account 1 balance: ${balance}`);
+
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
+
+            await createGameTx.wait();
+
+            const cancelGameTx = await this.test.rps.connect(addr1).cancelGame(generateGameIdTx);
+
+            await cancelGameTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [players can only cancel their games]').to.equal("VM Exception while processing transaction: reverted with reason string 'Deadline for join has not yet expired.'");
+        }
+    });
+
+    it("Should allow players to play Rock Paper Scissors together.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
+
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
+
+        const transfer2TokenTx = await this.test.rps.transfer(addr2.address, 200);
+        await transfer2TokenTx.wait();
+
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+
+        console.log(`generated game id: ${generateGameIdTx}`);
+
+        const balance1 = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance: ${balance1}`);
+
+        const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance: ${balance2}`);
+
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 100, false);
 
         await createGameTx.wait();
 
-        // attempt to cancel the game with this ID
-        const cancelGameTx = await rps.connect(addr2).cancelGame(generateGameIdTx);
+        const balance1PostGameCreate = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
 
-    } catch (error) {
-        expect(error.message, 'test revert [players can only cancel their games]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player is not player for this game; not permitted to cancel the game.'");
-    }
-});
+        const joinGameTx = await this.test.rps.connect(addr2).joinGame(generateGameIdTx, 2, 100, false);
 
-it("Should allow players to play Rock Paper Scissors together.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
+        await joinGameTx.wait();
 
-    const [, addr1, addr2] = await ethers.getSigners();
+        const balance2PostGameJoin = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
 
-    // transfer from owner to addr1
-    const transfer1TokenTx = await rps.transfer(addr1.address, 200);
-    await transfer1TokenTx.wait();
+        const revealMoveTx = await this.test.rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
 
-    const transfer2TokenTx = await rps.transfer(addr2.address, 200);
-    await transfer2TokenTx.wait();
+        await revealMoveTx.wait();
 
-    const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+        const balance1EndGame = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance end of game: ${balance1EndGame}`);
 
-    console.log(`generated game id: ${generateGameIdTx}`);
+        const balance2EndGame = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance end of game: ${balance2EndGame}`);
 
-    const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance: ${balance1}`);
+        expect(balance1EndGame).to.equal(100);
+        expect(balance2EndGame).to.equal(300);
+    });
 
-    const balance2 = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance: ${balance2}`);
+    it("Should allow players to play Rock Paper Scissors together and wager all their winnings.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
 
-    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 100, false);
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
 
-    await createGameTx.wait();
+        const transfer2TokenTx = await this.test.rps.transfer(addr2.address, 200);
+        await transfer2TokenTx.wait();
 
-    const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-    const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx,2,100,false);
-    
-    await joinGameTx.wait();
+        console.log(`generated game id: ${generateGameIdTx}`);
 
-    const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
+        const balance1 = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance: ${balance1}`);
 
-    const revealMoveTx = await rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
+        const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance: ${balance2}`);
 
-    await revealMoveTx.wait();
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
 
-    const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance end of game: ${balance1EndGame}`);
+        await createGameTx.wait();
 
-    const balance2EndGame = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance end of game: ${balance2EndGame}`);
+        const balance1PostGameCreate = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
 
-    expect(balance1EndGame).to.equal(100);
-    expect(balance2EndGame).to.equal(300);
-});
+        const joinGameTx = await this.test.rps.connect(addr2).joinGame(generateGameIdTx, 2, 200, true);
 
-it("Should allow players to play Rock Paper Scissors together and wager all their winnings.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
+        await joinGameTx.wait();
 
-    const [, addr1, addr2] = await ethers.getSigners();
+        const balance2PostGameJoin = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
 
-    // transfer from owner to addr1
-    const transfer1TokenTx = await rps.transfer(addr1.address, 200);
-    await transfer1TokenTx.wait();
+        const revealMoveTx = await this.test.rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
 
-    const transfer2TokenTx = await rps.transfer(addr2.address, 200);
-    await transfer2TokenTx.wait();
+        await revealMoveTx.wait();
 
-    const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+        const balance1EndGame = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance end of game: ${balance1EndGame}`);
 
-    console.log(`generated game id: ${generateGameIdTx}`);
+        const balance2EndGame = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance end of game: ${balance2EndGame}`);
 
-    const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance: ${balance1}`);
+        expect(balance1EndGame).to.equal(0);
+        expect(balance2EndGame).to.equal(400);
+    });
 
-    const balance2 = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance: ${balance2}`);
+    it("Should return wagers to player accounts if the game payoff is a tie.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
 
-    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
 
-    await createGameTx.wait();
+        const transfer2TokenTx = await this.test.rps.transfer(addr2.address, 200);
+        await transfer2TokenTx.wait();
 
-    const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
 
-    const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 2, 200, true);
+        console.log(`generated game id: ${generateGameIdTx}`);
 
-    await joinGameTx.wait();
+        const balance1 = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance: ${balance1}`);
 
-    const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
+        const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance: ${balance2}`);
 
-    const revealMoveTx = await rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
 
-    await revealMoveTx.wait();
+        await createGameTx.wait();
 
-    const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance end of game: ${balance1EndGame}`);
+        const balance1PostGameCreate = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
 
-    const balance2EndGame = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance end of game: ${balance2EndGame}`);
+        const joinGameTx = await this.test.rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
 
-    expect(balance1EndGame).to.equal(0);
-    expect(balance2EndGame).to.equal(400);
-});
+        await joinGameTx.wait();
 
-it("Should return wagers to player accounts if the game payoff is a tie.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
+        const balance2PostGameJoin = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
 
-    const [, addr1, addr2] = await ethers.getSigners();
+        const revealMoveTx = await this.test.rps.connect(addr1).revealMove(3, bytes32({ input: "super secret!" }));
 
-    // transfer from owner to addr1
-    const transfer1TokenTx = await rps.transfer(addr1.address, 200);
-    await transfer1TokenTx.wait();
+        await revealMoveTx.wait();
 
-    const transfer2TokenTx = await rps.transfer(addr2.address, 200);
-    await transfer2TokenTx.wait();
+        const balance1EndGame = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance end of game: ${balance1EndGame}`);
 
-    const generateGameIdTx = await rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
+        const balance2EndGame = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance end of game: ${balance2EndGame}`);
 
-    console.log(`generated game id: ${generateGameIdTx}`);
+        expect(balance1EndGame).to.equal(200);
+        expect(balance2EndGame).to.equal(200);
+    });
 
-    const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance: ${balance1}`);
+    it("Should only allow opponent to claim if secondsUntilReveal has elapsed.", async function () {
+        const [, addr1, addr2] = await ethers.getSigners();
 
-    const balance2 = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance: ${balance2}`);
+        const transfer1TokenTx = await this.test.rps.transfer(addr1.address, 200);
+        await transfer1TokenTx.wait();
 
-    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+        const transfer2TokenTx = await this.test.rps.transfer(addr2.address, 200);
+        await transfer2TokenTx.wait();
 
-    await createGameTx.wait();
+        const generateGameIdTx = await this.test.rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
 
-    const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
+        console.log(`generated game id: ${generateGameIdTx}`);
 
-    const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
+        const balance1 = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance: ${balance1}`);
 
-    await joinGameTx.wait();
+        const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance: ${balance2}`);
 
-    const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
 
-    const revealMoveTx = await rps.connect(addr1).revealMove(3, bytes32({ input: "super secret!" }));
+        await createGameTx.wait();
 
-    await revealMoveTx.wait();
+        const balance1PostGameCreate = await this.test.rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
 
-    const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance end of game: ${balance1EndGame}`);
+        const joinGameTx = await this.test.rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
 
-    const balance2EndGame = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance end of game: ${balance2EndGame}`);
+        await joinGameTx.wait();
 
-    expect(balance1EndGame).to.equal(200);
-    expect(balance2EndGame).to.equal(200);
-});
+        const balance2PostGameJoin = await this.test.rps.connect(addr2).balanceOf(addr2.address);
+        console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
 
-it("Should only allow opponent to claim if secondsUntilReveal has elapsed.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
+        try {
+            const claimTotalWageredTx = await this.test.rps.connect(addr2).claimTotalWagered(generateGameIdTx);
 
-    const [, addr1, addr2] = await ethers.getSigners();
+            await claimTotalWageredTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [can only claim if secondsUntilReveal has elapsed]').to.equal("VM Exception while processing transaction: reverted with reason string 'The deadline for reveal for this game has not yet expired.'");
+        }
+    });
 
-    // transfer from owner to addr1
-    const transfer1TokenTx = await rps.transfer(addr1.address, 200);
-    await transfer1TokenTx.wait();
+    it("Should only allow owner to destroy the contract.", async function () {
+        const killTx = await this.test.rps.kill();
+        await killTx.wait();
 
-    const transfer2TokenTx = await rps.transfer(addr2.address, 200);
-    await transfer2TokenTx.wait();
+        const rpsCode = await ethers.getDefaultProvider().getCode(this.test.rps.address);
+        expect(rpsCode).to.equal('0x');
+    });
 
-    const generateGameIdTx = await rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
+    it("Should not let non-owner destroy the contract.", async function () {
+        const [, addr1] = await ethers.getSigners();
 
-    console.log(`generated game id: ${generateGameIdTx}`);
-
-    const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance: ${balance1}`);
-
-    const balance2 = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance: ${balance2}`);
-
-    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
-
-    await createGameTx.wait();
-
-    const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
-    console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
-
-    const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
-
-    await joinGameTx.wait();
-
-    const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
-    console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
-
-    try {
-    const claimTotalWageredTx = await rps.connect(addr2).claimTotalWagered(generateGameIdTx);
-
-    await claimTotalWageredTx.wait();
-    } catch(error) {
-        expect(error.message, 'test revert [can only claim if secondsUntilReveal has elapsed]').to.equal("VM Exception while processing transaction: reverted with reason string 'The deadline for reveal for this game has not yet expired.'");
-    }
-});
-
-it("Should only allow owner to destroy the contract.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
-
-    const killTx = await rps.kill();
-    await killTx.wait();
-
-    const rpsCode = await ethers.getDefaultProvider().getCode(rps.address);
-    expect(rpsCode).to.equal('0x');
-});
-
-it("Should not let non-owner destroy the contract.", async function () {
-    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
-    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
-    await rps.deployed();
-
-    const [, addr1] = await ethers.getSigners();
-
-    try {
-    const killTx = await rps.connect(addr1).kill();
-    await killTx.wait();
-    } catch(error) {
-        expect(error.message, 'test revert [only owner can destroy contract]').to.equal("VM Exception while processing transaction: reverted with reason string 'Ownable: caller is not the owner'");
-    }
+        try {
+            const killTx = await this.test.rps.connect(addr1).kill();
+            await killTx.wait();
+        } catch (error) {
+            expect(error.message, 'test revert [only owner can destroy contract]').to.equal("VM Exception while processing transaction: reverted with reason string 'Ownable: caller is not the owner'");
+        }
+    });
 });
