@@ -20,7 +20,6 @@ describe("RockPaperScissors", function () {
         
         const setFeeInTokensTx = await rps.setFeeInTokens(81);
 
-        // wait until the transaction is mined
         await setFeeInTokensTx.wait();
 
         expect(await rps.feeInTokens()).to.equal(81);
@@ -34,7 +33,6 @@ it("Should allow owner to create a game after contract creation.", async functio
 
     const generateGameIdTx = await rps.generateGameId(1, bytes32({input: "super secret!"}));
 
-    // wait until the transaction is mined
     console.log(`generated game id: ${generateGameIdTx}`);
 
     const [owner, addr1] = await ethers.getSigners();
@@ -44,7 +42,6 @@ it("Should allow owner to create a game after contract creation.", async functio
 
     const createGameTx = await rps.createGame(generateGameIdTx, addr1.address, 60, 12, false);
 
-    // wait until the transaction is mined
     await createGameTx.wait();
 
     const [,opponent,,,,,] = await rps.games(generateGameIdTx);
@@ -61,7 +58,6 @@ it("Should prevent player from creating game if they have an insufficient balanc
     try {
     const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     console.log(`generated game id: ${generateGameIdTx}`);
 
     const balance = await rps.connect(addr1).balanceOf(addr1.address);
@@ -69,7 +65,6 @@ it("Should prevent player from creating game if they have an insufficient balanc
 
     const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 12, false);
 
-    // wait until the transaction is mined
     await createGameTx.wait();
     } catch(error) {
         expect(error.message, 'test revert [transaction execution reverts if insufficient balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Insufficient token balance to create a new game.'");
@@ -90,7 +85,6 @@ it("Should prevent player from using a wager that exceeds that player's balance"
     try {
         const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-        // wait until the transaction is mined
         console.log(`generated game id: ${generateGameIdTx}`);
 
         const balance = await rps.connect(addr1).balanceOf(addr1.address);
@@ -98,7 +92,6 @@ it("Should prevent player from using a wager that exceeds that player's balance"
 
         const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 400, false);
 
-        // wait until the transaction is mined
         await createGameTx.wait();
     } catch (error) {
         expect(error.message, 'test revert [wager amount exceeds balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player doesn't have enough tokens for this wagered amount.'");
@@ -119,7 +112,6 @@ it("Should prevent players from cancelling games that are not theirs.", async fu
     try {
         const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-        // wait until the transaction is mined
         console.log(`generated game id: ${generateGameIdTx}`);
 
         const balance = await rps.connect(addr1).balanceOf(addr1.address);
@@ -127,7 +119,6 @@ it("Should prevent players from cancelling games that are not theirs.", async fu
 
         const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
 
-        // wait until the transaction is mined
         await createGameTx.wait();
 
         // attempt to cancel the game with this ID
@@ -154,7 +145,6 @@ it("Should allow players to play Rock Paper Scissors together.", async function 
 
     const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     console.log(`generated game id: ${generateGameIdTx}`);
 
     const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
@@ -165,7 +155,6 @@ it("Should allow players to play Rock Paper Scissors together.", async function 
 
     const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 100, false);
 
-    // wait until the transaction is mined
     await createGameTx.wait();
 
     const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
@@ -173,7 +162,6 @@ it("Should allow players to play Rock Paper Scissors together.", async function 
 
     const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx,2,100,false);
     
-    // wait until the transaction is mined
     await joinGameTx.wait();
 
     const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
@@ -181,7 +169,6 @@ it("Should allow players to play Rock Paper Scissors together.", async function 
 
     const revealMoveTx = await rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     await revealMoveTx.wait();
 
     const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
@@ -210,7 +197,6 @@ it("Should allow players to play Rock Paper Scissors together and wager all thei
 
     const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     console.log(`generated game id: ${generateGameIdTx}`);
 
     const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
@@ -221,7 +207,6 @@ it("Should allow players to play Rock Paper Scissors together and wager all thei
 
     const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
 
-    // wait until the transaction is mined
     await createGameTx.wait();
 
     const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
@@ -229,7 +214,6 @@ it("Should allow players to play Rock Paper Scissors together and wager all thei
 
     const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 2, 200, true);
 
-    // wait until the transaction is mined
     await joinGameTx.wait();
 
     const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
@@ -237,7 +221,6 @@ it("Should allow players to play Rock Paper Scissors together and wager all thei
 
     const revealMoveTx = await rps.connect(addr1).revealMove(1, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     await revealMoveTx.wait();
 
     const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
@@ -266,7 +249,6 @@ it("Should return wagers to player accounts if the game payoff is a tie.", async
 
     const generateGameIdTx = await rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     console.log(`generated game id: ${generateGameIdTx}`);
 
     const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
@@ -277,7 +259,6 @@ it("Should return wagers to player accounts if the game payoff is a tie.", async
 
     const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
 
-    // wait until the transaction is mined
     await createGameTx.wait();
 
     const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
@@ -285,7 +266,6 @@ it("Should return wagers to player accounts if the game payoff is a tie.", async
 
     const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
 
-    // wait until the transaction is mined
     await joinGameTx.wait();
 
     const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
@@ -293,7 +273,6 @@ it("Should return wagers to player accounts if the game payoff is a tie.", async
 
     const revealMoveTx = await rps.connect(addr1).revealMove(3, bytes32({ input: "super secret!" }));
 
-    // wait until the transaction is mined
     await revealMoveTx.wait();
 
     const balance1EndGame = await rps.connect(addr1).balanceOf(addr1.address);
@@ -304,4 +283,78 @@ it("Should return wagers to player accounts if the game payoff is a tie.", async
 
     expect(balance1EndGame).to.equal(200);
     expect(balance2EndGame).to.equal(200);
+});
+
+it("Should only allow opponent to claim if secondsUntilReveal has elapsed.", async function () {
+    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
+    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
+    await rps.deployed();
+
+    const [, addr1, addr2] = await ethers.getSigners();
+
+    // transfer from owner to addr1
+    const transfer1TokenTx = await rps.transfer(addr1.address, 200);
+    await transfer1TokenTx.wait();
+
+    const transfer2TokenTx = await rps.transfer(addr2.address, 200);
+    await transfer2TokenTx.wait();
+
+    const generateGameIdTx = await rps.connect(addr1).generateGameId(3, bytes32({ input: "super secret!" }));
+
+    console.log(`generated game id: ${generateGameIdTx}`);
+
+    const balance1 = await rps.connect(addr1).balanceOf(addr1.address);
+    console.log(`account 1 balance: ${balance1}`);
+
+    const balance2 = await rps.connect(addr2).balanceOf(addr2.address);
+    console.log(`account 2 balance: ${balance2}`);
+
+    const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+
+    await createGameTx.wait();
+
+    const balance1PostGameCreate = await rps.connect(addr1).balanceOf(addr1.address);
+    console.log(`account 1 balance post game create: ${balance1PostGameCreate}`);
+
+    const joinGameTx = await rps.connect(addr2).joinGame(generateGameIdTx, 3, 200, true);
+
+    await joinGameTx.wait();
+
+    const balance2PostGameJoin = await rps.connect(addr2).balanceOf(addr2.address);
+    console.log(`account 2 balance post game join: ${balance2PostGameJoin}`);
+
+    try {
+    const claimTotalWageredTx = await rps.connect(addr2).claimTotalWagered(generateGameIdTx);
+
+    await claimTotalWageredTx.wait();
+    } catch(error) {
+        expect(error.message, 'test revert [can only claim if secondsUntilReveal has elapsed]').to.equal("VM Exception while processing transaction: reverted with reason string 'The deadline for reveal for this game has not yet expired.'");
+    }
+});
+
+it("Should only allow owner to destroy the contract.", async function () {
+    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
+    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
+    await rps.deployed();
+
+    const killTx = await rps.kill();
+    await killTx.wait();
+
+    const rpsCode = await ethers.getDefaultProvider().getCode(rps.address);
+    expect(rpsCode).to.equal('0x');
+});
+
+it("Should not let non-owner destroy the contract.", async function () {
+    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
+    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
+    await rps.deployed();
+
+    const [, addr1] = await ethers.getSigners();
+
+    try {
+    const killTx = await rps.connect(addr1).kill();
+    await killTx.wait();
+    } catch(error) {
+        expect(error.message, 'test revert [only owner can destroy contract]').to.equal("VM Exception while processing transaction: reverted with reason string 'Ownable: caller is not the owner'");
+    }
 });
