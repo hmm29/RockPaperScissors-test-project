@@ -75,3 +75,32 @@ it("Should prevent player from creating game if they have an insufficient balanc
         expect(error.message, 'test revert [transaction execution reverts if insufficient balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Insufficient token balance to create a new game.'");
     }
 });
+
+it("Should prevent player from using a wager that exceeds that player's balance", async function () {
+    const RockPaperScissors = await ethers.getContractFactory("RockPaperScissors");
+    const rps = await RockPaperScissors.deploy("RockPaperScissors", "RPS", 100);
+    await rps.deployed();
+
+    const [, addr1, addr2] = await ethers.getSigners();
+
+    // transfer from owner to addr1
+    const transferTokenTx = await rps.transfer(addr1.address, 200);
+    await transferTokenTx.wait();
+
+    try {
+        const generateGameIdTx = await rps.connect(addr1).generateGameId(1, bytes32({ input: "super secret!" }));
+
+        // wait until the transaction is mined
+        console.log(`generated game id: ${generateGameIdTx}`);
+
+        const balance = await rps.connect(addr1).balanceOf(addr1.address);
+        console.log(`non-owner account balance: ${balance}`);
+
+        const createGameTx = await rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 400, false);
+
+        // wait until the transaction is mined
+        await createGameTx.wait();
+    } catch (error) {
+        expect(error.message, 'test revert [wager amount exceeds balance]').to.equal("VM Exception while processing transaction: reverted with reason string 'Player doesn't have enough tokens for this wagered amount.'");
+    }
+});

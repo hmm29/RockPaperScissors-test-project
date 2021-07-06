@@ -157,7 +157,7 @@ contract RockPaperScissors is ERC20, Ownable {
      * @dev The player creates a game by submitting his hashed move, i.e., the * gameId. Allows player to set 'exploding' games that opponent has limited * time to join.
      * @param gameId The unique ID for the game
      * @param opponent The address of the selected opponent for the game
-     * @param minutesLeftToJoin Amount of time opponent has left to join the game
+     * @param minutesLeftToJoin Amount of time opponent has left to join the game. Using minutes as minute granularity better, and mentally easier for * players to work with than seconds
      * @param wager Amount of tokens bet by the player
      * @param useWinnings A flag that lets player override wager amount and use previous winnings
      */
