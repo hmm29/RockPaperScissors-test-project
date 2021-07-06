@@ -304,15 +304,6 @@ contract RockPaperScissors is ERC20, Ownable {
     }
 
     /**
-     * @dev Internal function for payoff payouts from the contract account
-     * @param recipient Recipient of the payout
-     * @param amount Amount paid out
-     */
-    function _payTo(address recipient, uint256 amount) internal {
-         ERC20(address(this)).transfer(recipient, amount);
-    }
-
-    /**
      * @dev If the opponent doesn't join the game before the deadline to join, the player can cancel the game.
      * @param gameId ID of the game to be cancelled
      */
@@ -355,6 +346,15 @@ contract RockPaperScissors is ERC20, Ownable {
         }
 
         emit TotalWageredClaimed(msg.sender, gameId);
+    }
+
+    /**
+     * @dev Internal function for payoff payouts from the contract account
+     * @param recipient Recipient of the payout
+     * @param amount Amount paid out
+     */
+    function _payTo(address recipient, uint256 amount) internal {
+         ERC20(address(this)).transfer(recipient, amount);
     }
 
     /**
