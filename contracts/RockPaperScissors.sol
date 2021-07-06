@@ -303,6 +303,11 @@ contract RockPaperScissors is ERC20, Ownable {
         emit MoveRevealed(msg.sender, gameId, move, payoff);
     }
 
+    /**
+     * @dev Internal function for payoff payouts from the contract account
+     * @param recipient Recipient of the payout
+     * @param amount Amount paid out
+     */
     function _payTo(address recipient, uint256 amount) internal {
          ERC20(address(this)).transfer(recipient, amount);
     }
