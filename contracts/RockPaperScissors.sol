@@ -48,16 +48,16 @@ contract RockPaperScissors is ERC20, Ownable {
     mapping(address => Player) public players;
 
     uint256 public feeInTokens;
-    uint256 public secondsUntilReveal;
+    uint256 public secondsLeftToReveal;
 
-    uint256 MIN_SECONDS_UNTIL_REVEAL = 60; // 1 minute -> seconds
-    uint256 MAX_SECONDS_UNTIL_REVEAL = 3600; // 1 hour -> seconds
+    uint256 MIN_SECONDS_LEFT_TO_REVEAL = 60; // 1 minute -> seconds
+    uint256 MAX_SECONDS_LEFT_TO_REVEAL = 3600; // 1 hour -> seconds
     uint256 MIN_SECONDS_LEFT_TO_JOIN = 3600; // 1 hour -> seconds
     uint256 MAX_SECONDS_LEFT_TO_JOIN = 432000; // 5 days -> seconds
 
-    event SecondsUntilRevealUpdated(
+    event SecondsLeftToRevealUpdated(
         address indexed sender,
-        uint256 secondsUntilReveal
+        uint256 secondsLeftToReveal
     );
     event MoveRevealed(
         address indexed sender,
@@ -107,7 +107,7 @@ contract RockPaperScissors is ERC20, Ownable {
         );
         _mint(msg.sender, 1_000_000_000 * (10**decimals()));
         _setFeeInTokens(_feeInTokens);
-        _setSecondsUntilReveal(60);
+        _setSecondsLeftToReveal(300);
     }
 
     /**
@@ -128,10 +128,10 @@ contract RockPaperScissors is ERC20, Ownable {
 
     /**
      * @dev Update how much time left until players' moves are revealed in the * game. This builds anticipation for the payoff throughout the game.
-     * @param _secondsUntilReveal Seconds left until revealing player's move
+     * @param _secondsLeftToReveal Seconds left until revealing player's move
      */
-    function setSecondsUntilReveal(uint256 _secondsUntilReveal) external onlyOwner {
-        _setSecondsUntilReveal(_secondsUntilReveal);
+    function setSecondsLeftToReveal(uint256 _secondsLeftToReveal) external onlyOwner {
+        _setSecondsLeftToReveal(_secondsLeftToReveal);
     }
 
     /**
@@ -153,14 +153,14 @@ contract RockPaperScissors is ERC20, Ownable {
      * @dev The player creates a game by submitting his hashed move, i.e., the * gameId. Allows player to set 'exploding' games that opponent has limited * time to join.
      * @param gameId The unique ID for the game
      * @param opponent The address of the selected opponent for the game
-     * @param minutesLeftToJoin Amount of time opponent has left to join the game. Using minutes as minute granularity better, and mentally easier for * players to work with than seconds. Also prevents abuse.
+     * @param secondsLeftToJoin Amount of time in seconds opponent has left to join the game
      * @param wager Amount of tokens bet by the player
      * @param useWinnings A flag that lets player override wager amount and use previous winnings
      */
     function createGame(
         bytes32 gameId,
         address opponent,
-        uint256 minutesLeftToJoin,
+        uint256 secondsLeftToJoin,
         uint256 wager,
         bool useWinnings
     ) public {
@@ -168,11 +168,10 @@ contract RockPaperScissors is ERC20, Ownable {
         require(opponent != address(0), "Not a valid opponent address.");
         require(opponent != msg.sender, "Not a valid opponent; players cannot play against themselves.");
 
-        uint256 secondsLeftToJoin = minutesLeftToJoin*60;
         require(
             MIN_SECONDS_LEFT_TO_JOIN <= secondsLeftToJoin &&
                 secondsLeftToJoin <= MAX_SECONDS_LEFT_TO_JOIN,
-            "Please ensure the time left to join the game is between the acceptable min (60 min) and max (7200 min) values."
+            "Please ensure the time left to join the game is between the acceptable min (3600) and max (432000) values."
         );
 
         Game storage game = games[gameId];
@@ -240,7 +239,7 @@ contract RockPaperScissors is ERC20, Ownable {
         game.opponentWager = wager;
 
         // Set the deadline for the move reveal
-        uint256 deadlineToReveal = block.timestamp + secondsUntilReveal;
+        uint256 deadlineToReveal = block.timestamp + secondsLeftToReveal;
         game.deadline = deadlineToReveal;
 
         emit GameJoined(gameId, move, wager, deadlineToReveal);
@@ -326,7 +325,7 @@ contract RockPaperScissors is ERC20, Ownable {
         require(game.opponentMove == Shape.NONE, "Unable to cancel; the opponent is already participating in this game.");
         require(game.deadline < block.timestamp, "Deadline for join has not yet expired.");
 
-        uint playerWager = game.playerWager;
+        uint256 playerWager = game.playerWager;
         _clearGame(gameId);
 
         if (playerWager > 0) {
@@ -414,21 +413,21 @@ contract RockPaperScissors is ERC20, Ownable {
     }
 
     /**
-     * @dev Internal function to update secondsUntilReveal.
-     * @param _secondsUntilReveal Seconds left until revealing player's move
+     * @dev Internal function to update secondsLeftToReveal.
+     * @param _secondsLeftToReveal Seconds left for player to reveal move to opponent
      */
-    function _setSecondsUntilReveal(uint256 _secondsUntilReveal) internal {
+    function _setSecondsLeftToReveal(uint256 _secondsLeftToReveal) internal {
         require(
-            MIN_SECONDS_UNTIL_REVEAL <= _secondsUntilReveal &&
-                _secondsUntilReveal <= MAX_SECONDS_UNTIL_REVEAL,
-            "Please ensure secondsUntilReveal is between the acceptable min (60) and max (3600) values."
+            MIN_SECONDS_LEFT_TO_REVEAL <= _secondsLeftToReveal &&
+                _secondsLeftToReveal <= MAX_SECONDS_LEFT_TO_REVEAL,
+            "Please ensure secondsLeftToReveal is between the acceptable min (60) and max (3600) values."
         );
-        secondsUntilReveal = _secondsUntilReveal;
-        emit SecondsUntilRevealUpdated(msg.sender, _secondsUntilReveal);
+        secondsLeftToReveal = _secondsLeftToReveal;
+        emit SecondsLeftToRevealUpdated(msg.sender, _secondsLeftToReveal);
     }
 
     /**
-     * @dev Kill the contract
+     * @dev Destroy the contract
      */ 
     function kill() public onlyOwner {
         address payable owner = payable(owner());

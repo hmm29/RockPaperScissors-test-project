@@ -34,11 +34,11 @@ describe("RockPaperScissors", function () {
         const balance = await this.test.rps.balanceOf(owner.address);
         console.log(`balance: ${balance}`);
 
-        const createGameTx = await this.test.rps.createGame(generateGameIdTx, addr1.address, 60, 12, false);
+        const createGameTx = await this.test.rps.createGame(generateGameIdTx, addr1.address, 3600, 12, false);
 
         await createGameTx.wait();
 
-        const [, opponent, , , , ,] = await this.test.rps.games(generateGameIdTx);
+        const [, opponent] = await this.test.rps.games(generateGameIdTx);
         expect(opponent).to.equal(addr1.address);
     });
 
@@ -53,7 +53,7 @@ describe("RockPaperScissors", function () {
             const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
             console.log(`account 1 balance: ${balance}`);
 
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 12, false);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 12, false);
 
             await createGameTx.wait();
         } catch (error) {
@@ -72,7 +72,7 @@ describe("RockPaperScissors", function () {
         console.log(`generated game id: ${generateGameIdTx}`);
 
         try {
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr1.address, 60, 200, true);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr1.address, 3600, 200, true);
 
             await createGameTx.wait();
         } catch (error) {
@@ -91,11 +91,11 @@ describe("RockPaperScissors", function () {
         console.log(`generated game id: ${generateGameIdTx}`);
 
         try {
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 1, 200, true);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 10, 200, true);
 
             await createGameTx.wait();
         } catch (error) {
-            expect(error.message, 'test revert [minutes left to join]').to.equal("VM Exception while processing transaction: reverted with reason string 'Please ensure the time left to join the game is between the acceptable min (60 min) and max (7200 min) values.'");
+            expect(error.message, 'test revert [minutes left to join]').to.equal("VM Exception while processing transaction: reverted with reason string 'Please ensure the time left to join the game is between the acceptable min (3600) and max (432000) values.'");
         }
     });
 
@@ -113,7 +113,7 @@ describe("RockPaperScissors", function () {
             const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
             console.log(`account 1 balance: ${balance}`);
 
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 400, false);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 400, false);
 
             await createGameTx.wait();
         } catch (error) {
@@ -135,7 +135,7 @@ describe("RockPaperScissors", function () {
             const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
             console.log(`account 1 balance: ${balance}`);
 
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 10, false);
 
             await createGameTx.wait();
 
@@ -162,7 +162,7 @@ describe("RockPaperScissors", function () {
             const balance = await this.test.rps.connect(addr1).balanceOf(addr1.address);
             console.log(`account 1 balance: ${balance}`);
 
-            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 10, false);
+            const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 10, false);
 
             await createGameTx.wait();
 
@@ -193,7 +193,7 @@ describe("RockPaperScissors", function () {
         const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
         console.log(`account 2 balance: ${balance2}`);
 
-        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 100, false);
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 100, false);
 
         await createGameTx.wait();
 
@@ -240,7 +240,7 @@ describe("RockPaperScissors", function () {
         const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
         console.log(`account 2 balance: ${balance2}`);
 
-        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 200, true);
 
         await createGameTx.wait();
 
@@ -287,7 +287,7 @@ describe("RockPaperScissors", function () {
         const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
         console.log(`account 2 balance: ${balance2}`);
 
-        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 200, true);
 
         await createGameTx.wait();
 
@@ -334,7 +334,7 @@ describe("RockPaperScissors", function () {
         const balance2 = await this.test.rps.connect(addr2).balanceOf(addr2.address);
         console.log(`account 2 balance: ${balance2}`);
 
-        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 60, 200, true);
+        const createGameTx = await this.test.rps.connect(addr1).createGame(generateGameIdTx, addr2.address, 3600, 200, true);
 
         await createGameTx.wait();
 
